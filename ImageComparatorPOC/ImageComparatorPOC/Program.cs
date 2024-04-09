@@ -82,7 +82,6 @@ struct Desc
                 }
             }
             scores.Add(Math.Sqrt(sumMin));
-            //scores.Add(sumMin);
         }
         //take into account only well matching scores, skip 100 worst matches
         scores.Sort();
@@ -91,7 +90,6 @@ struct Desc
             finalScore += scores[i];
         }
         return finalScore;
-
     }
 
     static double VecLen(Mat vec)
