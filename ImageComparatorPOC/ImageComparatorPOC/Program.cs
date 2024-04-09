@@ -1,38 +1,39 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Emgu.CV.Util;
 using Emgu.CV;
-using Emgu.CV.ML;
 
-Console.WriteLine("Hello, World!");
-
+List<string> files = new List<string> { "Alt 1.jpg", "Alt 2.jpg", "Alt2 1.jpg", "Alt2 2.jpg", "SWE 1.jpeg", "SWE 2.jpeg", "Stolen 2.jpeg" };
 string directory = "C:\\Projects\\watches\\";
-Mat img1 = CvInvoke.Imread(directory + "Alt 1.jpg");
-Mat img2 = CvInvoke.Imread(directory + "Alt 2.jpg");
-Mat img3 = CvInvoke.Imread(directory + "Alt2 1.jpg");
-Mat img4 = CvInvoke.Imread(directory + "Alt2 2.jpg");
-Mat img5 = CvInvoke.Imread(directory + "SWE 1.jpeg");
-Mat img6 = CvInvoke.Imread(directory + "SWE 2.jpeg");
-Mat stolen = CvInvoke.Imread(directory + "Stolen 2.jpeg");
 
+List<Desc> descriptors = files
+    .Select(x => GetFature(CvInvoke.Imread(directory + x), x))
+    .ToList();
 
-var desc1 = GetFature(img1);
-var desc2 = GetFature(img2);
-var desc3 = GetFature(img3);
-var desc4 = GetFature(img4);
-var desc5 = GetFature(img5);
-var desc6 = GetFature(img6);
-var stolenFeatures = GetFature(stolen);
+//Run for all images or just for one
+#if false
+foreach(var d1 in descriptors)
+{
+    Test(descriptors, d1);
+}
+#else
+Test(descriptors, descriptors[6]);
+#endif
 
-Console.WriteLine("Alt 1.jpg:   " + stolenFeatures.Similarity(desc1));
-Console.WriteLine("Alt 2.jpg:   " + stolenFeatures.Similarity(desc2));
-Console.WriteLine("Alt2 1.jpg:  " + stolenFeatures.Similarity(desc3));
-Console.WriteLine("Alt2 2.jpg:  " + stolenFeatures.Similarity(desc4));
-Console.WriteLine("SWE 1.jpg:   " + stolenFeatures.Similarity(desc5));
-Console.WriteLine("SWE 2.jpg:   " + stolenFeatures.Similarity(desc6));
+static void Test(List<Desc> descriptors, Desc testedImage)
+{
+    Console.WriteLine(testedImage.Name);
+    foreach (var d2 in descriptors)
+    {
+        if (testedImage != d2)
+        {
+            Console.WriteLine($"{d2.Name}:   {testedImage.Similarity(d2)}");
+        }
+    }
 
-desc1.Similarity(desc2);
+    Console.WriteLine();
+}
 
-static Desc GetFature(Mat img)
+static Desc GetFature(Mat img, string name)
 {
     var vwc = new VectorOfKeyPoint();
     var descriptor = new Mat();
@@ -51,14 +52,16 @@ static Desc GetFature(Mat img)
     return new Desc 
     { 
         Point = points, 
-        Descriptor = descriptor 
+        Descriptor = descriptor,
+        Name = name
     };
 }
 
-struct Desc
+class Desc
 {
     public List<(int idx, float response)> Point;
     public Mat Descriptor;
+    public string Name;
 
     public double Similarity(Desc x)
     {
@@ -87,6 +90,7 @@ struct Desc
         scores.Sort();
         for(int i = 0; i < 200; i++)
         {
+            // ln(x*y*z) = ln(x) + ln(y) + ln(z)
             finalScore += Math.Log(1-scores[i]);
         }
         return finalScore;
