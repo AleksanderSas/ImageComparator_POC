@@ -1,11 +1,11 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using Emgu.CV.Util;
 using Emgu.CV;
+using Emgu.CV.ML;
 
 Console.WriteLine("Hello, World!");
 
 string directory = "C:\\Projects\\watches\\";
-//Mat img = CvInvoke.Imread("C:\Projects\watches\\Yamaha_r1.png");//, CvEnum.ImreadModes.AnyColor);
 Mat img1 = CvInvoke.Imread(directory + "Alt 1.jpg");
 Mat img2 = CvInvoke.Imread(directory + "Alt 2.jpg");
 Mat img3 = CvInvoke.Imread(directory + "Alt2 1.jpg");
@@ -37,7 +37,7 @@ static Desc GetFature(Mat img)
     var vwc = new VectorOfKeyPoint();
     var descriptor = new Mat();
 
-    var algorithm = new Emgu.CV.Features2D.KAZE();// Try other algorithms e.g. ORB
+    var algorithm = new Emgu.CV.Features2D.KAZE();// Try other algorithms
     algorithm.DetectAndCompute(img, null, vwc, descriptor, false);
 
     List<(int idx, float response)> points = new List<(int idx, float response)> ();
@@ -75,13 +75,7 @@ struct Desc
             for (int k = 0; k < 300; k++)
             {
                 var row2 = x.Descriptor.Row(x.Point[k].idx);
-                float sum = 0;
-                var tmp = (row1 - row2).GetData();
-                for (int n = 0; n < tmp.Length; n++)
-                {
-                    float a = (float)tmp.GetValue(0, n);
-                    sum += a * a;
-                }
+                double sum = VecLen(row1 - row2) / (VecLen(row1) + VecLen(row2));
                 if(sumMin > sum)
                 {
                     sumMin = sum;
@@ -97,5 +91,18 @@ struct Desc
             finalScore += scores[i];
         }
         return finalScore;
+
+    }
+
+    static double VecLen(Mat vec)
+    {
+        double sum = 0;
+        var tmp = vec.GetData();
+        for (int n = 0; n < tmp.Length; n++)
+        {
+            float a = (float)tmp.GetValue(0, n);
+            sum += a * a;
+        }
+        return Math.Sqrt(sum);
     }
 }
