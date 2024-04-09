@@ -81,13 +81,13 @@ struct Desc
                     sumMin = sum;
                 }
             }
-            scores.Add(Math.Sqrt(sumMin));
+            scores.Add(sumMin);
         }
         //take into account only well matching scores, skip 100 worst matches
         scores.Sort();
         for(int i = 0; i < 200; i++)
         {
-            finalScore += scores[i];
+            finalScore += Math.Log(1-scores[i]);
         }
         return finalScore;
     }
