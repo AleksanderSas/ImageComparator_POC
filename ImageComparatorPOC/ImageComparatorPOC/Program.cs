@@ -10,7 +10,7 @@ List<Desc> descriptors = files
     .ToList();
 
 //Run for all images or just for one
-#if false
+#if true
 foreach(var d1 in descriptors)
 {
     Test(descriptors, d1);
@@ -66,11 +66,12 @@ class Desc
     public double Similarity(Desc x)
     {
         double finalScore = 0.0;
-        List<double> scores = new List<double> ();
+        List<(double score, int matchIdx)> scores = new List<(double, int)> ();
 
         //try 300 most responsive points
-        for(int i = 0 ; i < 300; i++) 
+        for (int i = 0 ; i < 300; i++) 
         {
+            int bestIdx = 0;
             double sumMin = 100000;
             var row1 = Descriptor.Row(Point[i].idx);
 
@@ -82,16 +83,25 @@ class Desc
                 if(sumMin > sum)
                 {
                     sumMin = sum;
+                    bestIdx = k;
                 }
             }
-            scores.Add(sumMin);
+            scores.Add((sumMin, bestIdx));
         }
+
+        int[] hits = new int[300];
         //take into account only well matching scores, skip 100 worst matches
-        scores.Sort();
-        for(int i = 0; i < 200; i++)
+        scores.Sort( (x, y) => x.score.CompareTo(y.score));
+        for (int i = 0; i < 200; i++)
+        {
+            hits[scores[i].matchIdx]++;
+        }
+        for (int i = 0; i < 200; i++)
         {
             // ln(x*y*z) = ln(x) + ln(y) + ln(z)
-            finalScore += Math.Log(1-scores[i]);
+            finalScore += Math.Log(1 - scores[i].score);
+            // ln(1/x) = -ln(x)
+            finalScore -= Math.Log(hits[scores[i].matchIdx]);
         }
         return finalScore;
     }
