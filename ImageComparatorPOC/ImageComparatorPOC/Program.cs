@@ -16,6 +16,7 @@ static async Task SearchInDirectory()
 
     var testedDescriptor = GetFature(CvInvoke.Imread(teseed), "Vacheron_constatin_Overseas.jpg");
 
+    //For quick test
     //files = files.Take(10).ToArray();
 
     var readImageContext = new ParallelContext { TotalCount = files.Length };
@@ -73,15 +74,19 @@ static async Task TestAsync(List<Desc> descriptors, Desc testedImage, ParallelCo
         .Batches(15)
         .Select(x => Task.Run(() => x.Select(y => Compute(testedImage, y, context)).ToList())));
 
-    foreach(var r in taskResults.SelectMany(x => x))
+    var results = taskResults.SelectMany(x => x).ToList();
+    results.Sort();
+
+    Console.WriteLine();
+    foreach (var r in results)
     {
-        Console.WriteLine(r);
+        Console.WriteLine($"{r.Image} {r.Score}");
     }
 }
 
-static string Compute(Desc testedImage, Desc y, ParallelContext context)
+static ComparisionResult Compute(Desc testedImage, Desc y, ParallelContext context)
 {
-    var tmp = $"{y.Name}:   {y.Similarity(testedImage)}";
+    var tmp = new ComparisionResult(y.Similarity(testedImage), y.Name);
 
     lock(context)
     {
