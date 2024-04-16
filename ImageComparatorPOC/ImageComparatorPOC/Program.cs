@@ -10,19 +10,21 @@ await SearchInDirectory();
 
 static async Task SearchInDirectory()
 {
-    string teseed = "C:\\Projects\\watches\\SWE-production\\Stolen\\Vacheron_constatin_Overseas.jpg";
-    string directory = "C:\\Projects\\watches\\SWE-production\\Vacheron Constantin";
+    string directory = "C:\\Projects\\watches\\SWE-production\\Patek Philippe";
     string[] files = Directory.GetFiles(directory);
 
-    var testedDescriptor = GetFature(CvInvoke.Imread(teseed), "Vacheron_constatin_Overseas.jpg");
+    //string teseed = "C:\\Projects\\watches\\SWE-production\\Stolen\\Patek_Philippe_Calatrava.jpg";
+    //var testedDescriptor = GetFature(CvInvoke.Imread(teseed), "Patek_Philippe_Calatrava.jpg");
+
+    string teseed2 = "C:\\Projects\\watches\\SWE-production\\Stolen\\Perek_philippe.jpg";
+    var testedDescriptor2 = GetFature(CvInvoke.Imread(teseed2), "Perek_philippe.jpg");
 
     //For quick test
-    //files = files.Take(10).ToArray();
+    files = files.Take(150).ToArray();
 
     var readImageContext = new ParallelContext { TotalCount = files.Length };
     var batches = files.ToList().Batches(4);
-    var taskResults = await Task.WhenAll(batches
-        .Select(x => GetFeatureAsync(x, readImageContext)));
+    var taskResults = await Task.WhenAll(batches.Select(x => GetFeatureAsync(x, readImageContext)));
 
     List<Desc> descriptors = taskResults
         .SelectMany(x => x)
@@ -31,7 +33,9 @@ static async Task SearchInDirectory()
 
     Console.WriteLine();
 
-    await TestAsync(descriptors, testedDescriptor, new ParallelContext { TotalCount = descriptors.Count });
+    //await TestAsync(descriptors, testedDescriptor);
+
+    await TestAsync(descriptors, testedDescriptor2);
 }
 
 static Task<List<Desc>> GetFeatureAsync(IList<string> files, ParallelContext context)
@@ -68,19 +72,36 @@ static void RunTest()
 #endif
 }
 
-static async Task TestAsync(List<Desc> descriptors, Desc testedImage, ParallelContext context)
+static async Task TestAsync(List<Desc> descriptors, Desc testedImage)
 {
+    var threadNo = 8 + 3;
+    var context = new ParallelContext
+    {
+        TotalCount = descriptors.Count,
+        ThreadCount = threadNo
+    };
+
     var taskResults = await Task.WhenAll(descriptors
-        .Batches(15)
-        .Select(x => Task.Run(() => x.Select(y => Compute(testedImage, y, context)).ToList())));
+        .Batches(descriptors.Count / threadNo)
+        .Select(x => Task.Run(() => 
+        {
+            var tmp = x.Select(y => Compute(testedImage, y, context)).ToList();
+            context.ThreadCount--;
+            return tmp;
+        })));
 
     var results = taskResults.SelectMany(x => x).ToList();
     results.Sort();
 
-    Console.WriteLine();
-    foreach (var r in results)
+    var resultPath = $"C:\\Projects\\watches\\{testedImage.Name}.txt";
+    using (StreamWriter outputFile = new StreamWriter(resultPath))
     {
-        Console.WriteLine($"{r.Image} {r.Score}");
+        Console.WriteLine();
+        foreach (var r in results)
+        {
+            //Console.WriteLine($"{r.Image} {r.Score}");
+            outputFile.WriteLine($"{r.Image} {r.Score}");
+        }
     }
 }
 
@@ -90,7 +111,7 @@ static ComparisionResult Compute(Desc testedImage, Desc y, ParallelContext conte
 
     lock(context)
     {
-        Console.Write($"\rCompute {++context.FinishedCount}\\{context.TotalCount}");
+        Console.Write($"\rCompute {++context.FinishedCount}\\{context.TotalCount}   Threads: {context.ThreadCount}");
     }
 
     return tmp;
@@ -99,6 +120,7 @@ static ComparisionResult Compute(Desc testedImage, Desc y, ParallelContext conte
 static void Test(List<Desc> descriptors, Desc testedImage)
 {
     Console.WriteLine(testedImage.Name);
+
     foreach (var d2 in descriptors)
     {
         if (testedImage != d2)
@@ -161,47 +183,55 @@ class Desc
 
     public double Similarity(Desc x)
     {
-        double finalScore = 0.0;
-        List<(double score, int matchIdx)> scores = new List<(double, int)> ();
-
-        //try 300 most responsive points
-        for (int i = 0 ; i < 300; i++) 
+        try
         {
-            int bestIdx = 0;
-            double sumMin = 100000;
-            var row1 = Descriptor.Row(Point[i].idx);
-            var row1Len = VecLen(row1);
+            double finalScore = 0.0;
+            List<(double score, int matchIdx)> scores = new List<(double, int)>();
 
-            //find most similar point
-            for (int k = 0; k < 300; k++)
+            //try 300 most responsive points
+            for (int i = 0; i < 300; i++)
             {
-                var row2 = x.Descriptor.Row(x.Point[k].idx);
-                double sum = VecLen(row1 - row2) / (row1Len + VecLen(row2));
-                if(sumMin > sum)
+                int bestIdx = 0;
+                double sumMin = 100000;
+                var row1 = Descriptor.Row(Point[i].idx);
+                var row1Len = VecLen(row1);
+
+                //find most similar point
+                for (int k = 0; k < 300; k++)
                 {
-                    sumMin = sum;
-                    bestIdx = k;
+                    var row2 = x.Descriptor.Row(x.Point[k].idx);
+                    double sum = VecLen(row1 - row2) / (row1Len + VecLen(row2));
+                    if (sumMin > sum)
+                    {
+                        sumMin = sum;
+                        bestIdx = k;
+                    }
                 }
+                scores.Add((sumMin, bestIdx));
             }
-            scores.Add((sumMin, bestIdx));
-        }
 
-        int[] hits = new int[300];
-        //take into account only well matching scores, skip 100 worst matches
-        scores.Sort( (x, y) => x.score.CompareTo(y.score));
-        for (int i = 0; i < 200; i++)
-        {
-            hits[scores[i].matchIdx]++;
-        }
-        for (int i = 0; i < 200; i++)
-        {
-            // ln(x*y*z) = ln(x) + ln(y) + ln(z)
-            finalScore += Math.Log(1 - scores[i].score);
-            // ln(1/x) = -ln(x)
-            finalScore -= Math.Log(hits[scores[i].matchIdx]);
-        }
+            int[] hits = new int[300];
+            //take into account only well matching scores, skip 100 worst matches
+            scores.Sort((x, y) => x.score.CompareTo(y.score));
+            for (int i = 0; i < 200; i++)
+            {
+                hits[scores[i].matchIdx]++;
+            }
+            for (int i = 0; i < 200; i++)
+            {
+                // ln(x*y*z) = ln(x) + ln(y) + ln(z)
+                finalScore += Math.Log(1 - scores[i].score);
+                // ln(1/x) = -ln(x)
+                finalScore -= Math.Log(hits[scores[i].matchIdx]);
+            }
 
-        return finalScore;
+            return finalScore;
+        }
+        catch (Exception e) 
+        {
+            Console.Error.WriteLine($"Error for {Name}:  {e}");
+            return 0.0;
+        }
     }
 
     static double VecLen(Mat vec)
