@@ -14,34 +14,30 @@ static async Task SearchInDirectory()
     string directory = "C:\\Projects\\watches\\SWE-production\\Patek Philippe";
     string[] files = Directory.GetFiles(directory);
 
-    //string teseed = "C:\\Projects\\watches\\SWE-production\\Stolen\\Patek_Philippe_Calatrava.jpg";
-    //var testedDescriptor = GetFature(CvInvoke.Imread(teseed), "Patek_Philippe_Calatrava.jpg");
-
     string teseed2 = "C:\\Projects\\watches\\SWE-production\\Stolen\\Perek_philippe.jpg";
-    var testedDescriptor2 = GetFature(CvInvoke.Imread(teseed2), "Perek_philippe.jpg");
+    var testedDescriptor2 = GetFature(CvInvoke.Imread(teseed2), "test.jpg");
 
     //For quick test
-    files = files.Take(100).ToArray();
+    //files = files.Take(100).ToArray();
 
+    var timer = new Stopwatch();
+    timer.Start();
     var readImageContext = new ParallelContext { TotalCount = files.Length };
-    var batches = files.ToList().Batches(4);
-    var taskResults = await Task.WhenAll(batches.Select(x => GetFeatureAsync(x, readImageContext)));
+    var batches = files.ToList().Batches(files.Length / 10);
+    var taskResults = await Task.WhenAll(batches.Select(x => GetFeatureAsync(x, readImageContext)).ToList());
 
     List<Desc> descriptors = taskResults
         .SelectMany(x => x)
         .Where(x => x != null)
         .ToList();
 
+    Console.WriteLine($"\nRead time: {timer.ElapsedMilliseconds / 1000}");
     Console.WriteLine();
 
-    //await TestAsync(descriptors, testedDescriptor);
-
-    var timer = new Stopwatch();
-    timer.Start();
+    timer.Restart();
     await TestAsync(descriptors, testedDescriptor2);
     timer.Stop();
-    Console.WriteLine(timer.ElapsedMilliseconds / 1000);
-
+    Console.WriteLine($"\nProcess time: {timer.ElapsedMilliseconds / 1000}");
 }
 
 static Task<List<Desc>> GetFeatureAsync(IList<string> files, ParallelContext context)
@@ -80,7 +76,7 @@ static void RunTest()
 
 static async Task TestAsync(List<Desc> descriptors, Desc testedImage)
 {
-    var threadNo = 5;
+    var threadNo = 6; //best results for number similar to number of physical cores
     var context = new ParallelContext
     {
         TotalCount = descriptors.Count,
@@ -235,7 +231,7 @@ class Desc
         }
         catch (Exception e) 
         {
-            Console.Error.WriteLine($"Error for {Name}:  {e}");
+            //Console.Error.WriteLine($"Error for {Name}:  {e}");
             return 0.0;
         }
     }
