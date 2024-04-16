@@ -3,6 +3,7 @@ using Emgu.CV.Util;
 using Emgu.CV;
 using System.Drawing;
 using ImageComparatorPOC;
+using System.Diagnostics;
 
 
 //RunTest();
@@ -20,7 +21,7 @@ static async Task SearchInDirectory()
     var testedDescriptor2 = GetFature(CvInvoke.Imread(teseed2), "Perek_philippe.jpg");
 
     //For quick test
-    files = files.Take(150).ToArray();
+    files = files.Take(100).ToArray();
 
     var readImageContext = new ParallelContext { TotalCount = files.Length };
     var batches = files.ToList().Batches(4);
@@ -35,7 +36,12 @@ static async Task SearchInDirectory()
 
     //await TestAsync(descriptors, testedDescriptor);
 
+    var timer = new Stopwatch();
+    timer.Start();
     await TestAsync(descriptors, testedDescriptor2);
+    timer.Stop();
+    Console.WriteLine(timer.ElapsedMilliseconds / 1000);
+
 }
 
 static Task<List<Desc>> GetFeatureAsync(IList<string> files, ParallelContext context)
@@ -74,7 +80,7 @@ static void RunTest()
 
 static async Task TestAsync(List<Desc> descriptors, Desc testedImage)
 {
-    var threadNo = 8 + 3;
+    var threadNo = 5;
     var context = new ParallelContext
     {
         TotalCount = descriptors.Count,
@@ -83,12 +89,12 @@ static async Task TestAsync(List<Desc> descriptors, Desc testedImage)
 
     var taskResults = await Task.WhenAll(descriptors
         .Batches(descriptors.Count / threadNo)
-        .Select(x => Task.Run(() => 
+        .Select(x => Task.Run(() =>
         {
             var tmp = x.Select(y => Compute(testedImage, y, context)).ToList();
             context.ThreadCount--;
             return tmp;
-        })));
+        })).ToList());
 
     var results = taskResults.SelectMany(x => x).ToList();
     results.Sort();
