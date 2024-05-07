@@ -4,13 +4,13 @@ using System.Drawing;
 
 namespace ImageComparatorPOC;
 
-class Fature
+class Feature
 {
     public required List<(int idx, float response)> Point;
     public required Mat Descriptor;
     public required string Name;
 
-    public static Fature GetFature(Mat imgIn, string name, float threshold = 0.001f)
+    public static Feature GetFature(Mat imgIn, string name, float threshold = 0.001f)
     {
         try
         {
@@ -39,7 +39,7 @@ class Fature
             points.Sort((x, y) => Math.Sign(y.response - x.response));
 
             //Console.WriteLine($"Read [points {points.Count}]: {name}");
-            return new Fature
+            return new Feature
             {
                 Point = points,
                 Descriptor = descriptor,
@@ -53,7 +53,7 @@ class Fature
         }
     }
 
-    public double Similarity(Fature x, int comparePoints = 300, int bestPoints = 200)
+    public double Similarity(Feature x, int comparePoints = 300, int bestPoints = 200)
     {
         try
         {

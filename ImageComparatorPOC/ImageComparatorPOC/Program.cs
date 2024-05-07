@@ -9,14 +9,16 @@ await SearchInDirectory();
 
 static async Task SearchInDirectory()
 {
-    string directory = "C:\\Projects\\watches\\SWE-production\\Patek Philippe";
+    //Patek Philippe
+    string directory = "C:\\Projects\\watches\\SWE-production\\Vacheron Constantin";
     string[] files = Directory.GetFiles(directory);
 
-    string teseed2 = "C:\\Projects\\watches\\SWE-production\\Stolen\\Perek_philippe.jpg";
-    var testedDescriptor2 = Fature.GetFature(CvInvoke.Imread(teseed2), "test.jpg");
+    //Perek_philippe
+    string teseed2 = "C:\\Projects\\watches\\SWE-production\\Stolen\\Vacheron_constatin_Overseas.jpg";
+    var testedDescriptor2 = Feature.GetFature(CvInvoke.Imread(teseed2), "test.jpg");
 
     //For quick test
-    files = files.Take(40).ToArray();
+    //files = files.Take(40).ToArray();
 
     var timer = new Stopwatch();
     timer.Start();
@@ -24,7 +26,7 @@ static async Task SearchInDirectory()
     var batches = files.ToList().Batches(files.Length / 10);
     var taskResults = await Task.WhenAll(batches.Select(x => GetFeatureAsync(x, readImageContext)).ToList());
 
-    List<Fature> descriptors = taskResults
+    List<Feature> descriptors = taskResults
         .SelectMany(x => x)
         .Where(x => x != null)
         .ToList();
@@ -38,11 +40,11 @@ static async Task SearchInDirectory()
     Console.WriteLine($"\nProcess time: {timer.ElapsedMilliseconds / 1000}");
 }
 
-static Task<List<Fature>> GetFeatureAsync(IList<string> files, ParallelContext context)
+static Task<List<Feature>> GetFeatureAsync(IList<string> files, ParallelContext context)
 {
     return Task.Run(() => files.Select(y =>
     {
-        var tmp = Fature.GetFature(CvInvoke.Imread(y), y);
+        var tmp = Feature.GetFature(CvInvoke.Imread(y), y);
         lock(context)
         {
             Console.Write($"\rRead images {++context.FinishedCount}\\{context.TotalCount}");
