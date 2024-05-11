@@ -43,7 +43,7 @@ Test(descriptors, descriptors[6]);
     public static async Task<List<ComparisionResult>> TestAsync(List<Feature> descriptors, Feature testedImage)
     {
         var results = await TestInternalAsync(descriptors, testedImage, 90, 70);
-        var toTakeLimit = Math.Max(40, (results.Count / 1000) * 9);
+        var toTakeLimit = Math.Max(40, (results.Count / 1000) * 5);
         results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -1.10).Take(toTakeLimit).ToList();
         //var results = await TestInternalAsync(descriptors, testedImage, 100, 80);
         //results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -3.10).Take(60).ToList();
