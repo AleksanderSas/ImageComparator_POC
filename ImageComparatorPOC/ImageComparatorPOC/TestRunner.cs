@@ -1,4 +1,5 @@
 ﻿using Emgu.CV;
+using Emgu.CV.Dnn;
 using System.Collections.Concurrent;
 
 namespace ImageComparatorPOC
@@ -11,6 +12,16 @@ namespace ImageComparatorPOC
         private const string ResutsDir = "C:\\Projects\\watches\\comparisionResults\\";
         private const string ZyteDir = "C:\\Projects\\watches\\Zyte-production\\";
         private const string SweDir = "C:\\Projects\\watches\\SWE-production-A\\";
+
+        public async Task RunTestWithCache(string brand)
+        {
+            var dir = $"{SweDir}{brand}";
+            var models = new DirectoryInfo(dir).GetDirectories();
+            foreach (var model in models)
+            {
+                await RunTestWithCache(brand, model.Name);
+            }
+        }
 
         public async Task RunTestWithCache(string brand, string model)
         {

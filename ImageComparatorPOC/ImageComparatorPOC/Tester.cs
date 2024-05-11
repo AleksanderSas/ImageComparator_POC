@@ -42,13 +42,21 @@ Test(descriptors, descriptors[6]);
 
     public static async Task<List<ComparisionResult>> TestAsync(List<Feature> descriptors, Feature testedImage)
     {
-        var results = await TestInternalAsync(descriptors, testedImage, 100, 75);
-        results = results.Where(x => x.Score < 0.0).Take(60).ToList();
+        var results = await TestInternalAsync(descriptors, testedImage, 90, 70);
+        var toTakeLimit = Math.Max(40, (results.Count / 1000) * 9);
+        results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -1.10).Take(toTakeLimit).ToList();
+        //var results = await TestInternalAsync(descriptors, testedImage, 100, 80);
+        //results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -3.10).Take(60).ToList();
         return await TestInternalAsync(results.Select(x => x.OtherFeature).ToList(), testedImage, 300, 200);
     }
 
     private static async Task<List<ComparisionResult>> TestInternalAsync(List<Feature> descriptors, Feature testedImage, int comparePoints, int bestPoints)
     {
+        if(descriptors.Count == 0)
+        {
+            Console.Write($"\rCompute 0\\0   Threads: 0");
+            return new List<ComparisionResult>();
+        }
         var context = new ParallelContext
         {
             TotalCount = descriptors.Count,

@@ -5,7 +5,8 @@ using System.Diagnostics;
 
 
 //"a-lange-and-sohne-grand-lange-1-rose-gold-mens-watch-115032-51092_267bc.jpg", "Lange 1"
-await (new TestRunner().RunTestWithCache("A. Lange & Sohne", "Saxonia"));
+await new TestRunner().RunTestWithCache("Audemars Piguet");
+//await (new TestRunner().RunTestWithCache("A. Lange & Sohne", "Saxonia"));
 //RunTest();
 //await SearchInDirectory();
 

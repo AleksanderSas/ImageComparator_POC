@@ -4,6 +4,10 @@ internal static class Utils
 {
     public static List<IList<T>> Batches<T>(this IList<T> input, int n)
     {
+        if(n == 0)
+        {
+            return new List<IList<T>> { input };
+        }
         int k = 0;
         List<IList<T>> result = new List<IList<T>> ();
         while (k < input.Count) 

@@ -151,7 +151,7 @@ class Feature
             return new Feature
             { 
                 Descriptor = new Mat(filename, Emgu.CV.CvEnum.ImreadModes.Unchanged),
-                Name = filename.Substring(originFile.LastIndexOf("/") + 1)
+                Name = originFile
             };
         }
         catch(Exception e) 
