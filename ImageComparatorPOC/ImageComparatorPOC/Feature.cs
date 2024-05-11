@@ -6,7 +6,6 @@ namespace ImageComparatorPOC;
 
 class Feature
 {
-    public required List<(int idx, float response)> Point;
     public required Mat Descriptor;
     public required string Name;
 
@@ -38,11 +37,16 @@ class Feature
             }
             points.Sort((x, y) => Math.Sign(y.response - x.response));
 
-            //Console.WriteLine($"Read [points {points.Count}]: {name}");
+            //((float)descriptor.Row(points[166].idx).GetData().GetValue(0, 44)) == ((float)trimmedMat.Row(166).GetData().GetValue(0, 44))
+            var trimmedMat = new Mat(300, 64, Emgu.CV.CvEnum.DepthType.Cv32F, descriptor.NumberOfChannels);
+            for (int i = 0; i < 300; i++)
+            {
+                descriptor.Row(points[i].idx).CopyTo(trimmedMat.Row(i));
+            }
+
             return new Feature
             {
-                Point = points,
-                Descriptor = descriptor,
+                Descriptor = trimmedMat,
                 Name = name
             };
         }
@@ -65,13 +69,13 @@ class Feature
             {
                 int bestIdx = 0;
                 double sumMin = 100000;
-                var row1 = Descriptor.Row(Point[i].idx);
+                var row1 = Descriptor.Row(i);
                 var row1Len = VecLen(row1);
 
                 //find most similar point
                 for (int k = 0; k < comparePoints; k++)
                 {
-                    var row2 = x.Descriptor.Row(x.Point[k].idx);
+                    var row2 = x.Descriptor.Row(k);
                     double sum = VecLen(row1 - row2) / (row1Len + VecLen(row2));
                     if (sumMin > sum)
                     {
@@ -117,4 +121,44 @@ class Feature
         }
         return Math.Sqrt(sum);
     }
+
+    public void Save(string filename)
+    {
+        try
+        {
+            var cc = Math.Max(filename.LastIndexOf('/'), filename.LastIndexOf('\\'));
+            var dir = filename.Substring(0, cc);
+            if(!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+            Descriptor.Save(filename);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Cannot save file {filename} due to exception {ex}");
+        }
+    }
+
+    public static Feature Load(string filename, string originFile)
+    {
+        if(!File.Exists(filename))
+        {
+            return null;
+        }
+        try 
+        { 
+            return new Feature
+            { 
+                Descriptor = new Mat(filename, Emgu.CV.CvEnum.ImreadModes.Unchanged),
+                Name = filename.Substring(originFile.LastIndexOf("/") + 1)
+            };
+        }
+        catch(Exception e) 
+        {
+            Console.WriteLine($"Cannot load from file {filename} due to exception {e}");
+            return null;
+        }
+    }
+
 }

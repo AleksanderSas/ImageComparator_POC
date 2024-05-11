@@ -40,22 +40,11 @@ Test(descriptors, descriptors[6]);
         Console.WriteLine();
     }
 
-    public static async Task TestAsync(List<Feature> descriptors, Feature testedImage)
+    public static async Task<List<ComparisionResult>> TestAsync(List<Feature> descriptors, Feature testedImage)
     {
         var results = await TestInternalAsync(descriptors, testedImage, 100, 75);
-        results = results.Where(x => x.Score < 0.0).Take(100).ToList();
-        var results2 = await TestInternalAsync(results.Select(x => x.OtherFeature).ToList(), testedImage, 300, 200);
-
-        var resultPath = $"C:\\Projects\\watches\\{testedImage.Name}.txt";
-        using (StreamWriter outputFile = new StreamWriter(resultPath))
-        {
-            Console.WriteLine();
-            foreach (var r in results2)
-            {
-                //Console.WriteLine($"{r.Image} {r.Score}");
-                outputFile.WriteLine($"{r.Image} {r.Score}");
-            }
-        }
+        results = results.Where(x => x.Score < 0.0).Take(60).ToList();
+        return await TestInternalAsync(results.Select(x => x.OtherFeature).ToList(), testedImage, 300, 200);
     }
 
     private static async Task<List<ComparisionResult>> TestInternalAsync(List<Feature> descriptors, Feature testedImage, int comparePoints, int bestPoints)
@@ -75,6 +64,7 @@ Test(descriptors, descriptors[6]);
                 return tmp;
             })).ToList());
 
+        Console.WriteLine();
         var results = taskResults.SelectMany(x => x).ToList();
         results.Sort();
         return results;
@@ -82,7 +72,8 @@ Test(descriptors, descriptors[6]);
 
     private static ComparisionResult Compute(Feature testedImage, Feature y, ParallelContext context, int comparePoints, int bestPoints)
     {
-        var tmp = new ComparisionResult(y.Similarity(testedImage, comparePoints, bestPoints), y.Name, y);
+        var score = y.Similarity(testedImage, comparePoints, bestPoints);
+        var tmp = new ComparisionResult(score, score / bestPoints, y.Name, y);
 
         lock (context)
         {

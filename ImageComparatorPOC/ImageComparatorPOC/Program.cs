@@ -4,8 +4,10 @@ using ImageComparatorPOC;
 using System.Diagnostics;
 
 
+//"a-lange-and-sohne-grand-lange-1-rose-gold-mens-watch-115032-51092_267bc.jpg", "Lange 1"
+await (new TestRunner().RunTestWithCache("A. Lange & Sohne", "Saxonia"));
 //RunTest();
-await SearchInDirectory();
+//await SearchInDirectory();
 
 static async Task SearchInDirectory()
 {
@@ -35,9 +37,20 @@ static async Task SearchInDirectory()
     Console.WriteLine();
 
     timer.Restart();
-    await Tester.TestAsync(descriptors, testedDescriptor2);
+    var results = await Tester.TestAsync(descriptors, testedDescriptor2);
     timer.Stop();
     Console.WriteLine($"\nProcess time: {timer.ElapsedMilliseconds / 1000}");
+
+    var resultPath = $"C:\\Projects\\watches\\{testedDescriptor2.Name}.txt";
+    using (StreamWriter outputFile = new StreamWriter(resultPath))
+    {
+        Console.WriteLine();
+        foreach (var r in results)
+        {
+            //Console.WriteLine($"{r.Image} {r.Score}");
+            outputFile.WriteLine($"{r.Image} {r.Score}");
+        }
+    }
 }
 
 static Task<List<Feature>> GetFeatureAsync(IList<string> files, ParallelContext context)
