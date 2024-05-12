@@ -83,9 +83,13 @@ Test(descriptors, descriptors[6]);
         var score = y.Similarity(testedImage, comparePoints, bestPoints);
         var tmp = new ComparisionResult(score, score / bestPoints, y.Name, y);
 
+        var c = Interlocked.Increment(ref context.FinishedCount);
+        if (c % 8 == 0)
+        {
         lock (context)
         {
-            Console.Write($"\rCompute {++context.FinishedCount}\\{context.TotalCount}   Threads: {context.ThreadCount}");
+                Console.Write($"\rCompute {c}\\{context.TotalCount}   Threads: {context.ThreadCount}   MPI: {context.MilisPerImage()}");
+            }
         }
 
         return tmp;
