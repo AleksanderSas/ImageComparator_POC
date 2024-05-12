@@ -63,12 +63,16 @@ Test(descriptors, descriptors[6]);
             ThreadCount = ThreadNo
         };
 
-        var taskResults = await Task.WhenAll(descriptors
-            .Batches(descriptors.Count / ThreadNo)
-            .Select(x => Task.Run(() =>
+        var taskResultsTmp = descriptors
+            .Batches(descriptors.Count / ThreadNo);
+
+        Console.WriteLine($"Batches: {taskResultsTmp.Count}");
+
+        var taskResults = await Task.WhenAll(
+            taskResultsTmp.Select(x => Task.Run(() =>
             {
                 var tmp = x.Select(y => Compute(testedImage, y, context, comparePoints, bestPoints)).ToList();
-                context.ThreadCount--;
+                context.Decrement();
                 return tmp;
             })).ToList());
 
