@@ -82,12 +82,12 @@ namespace ImageComparatorPOC
         {
             var result = new FilesToProcess();
             var dirs = new DirectoryInfo(ZyteDir).GetDirectories();
-            var brandDirs = dirs.Where(x => IsNameSimilar(x.Name, brand)).ToList();
+            var brandDirs = dirs.Where(x => IsNameSimilar(brand, x.Name)).ToList();
             foreach (var brandDir in brandDirs)
             {
                 result.Brands.Add(brandDir.Name);
                 dirs = new DirectoryInfo(brandDir.FullName).GetDirectories();
-                var modelDirs = dirs.Where(x => IsNameSimilar(x.Name, model)).ToList();
+                var modelDirs = dirs.Where(x => IsNameSimilar(model, x.Name)).ToList();
 
                 foreach (var modelDir in modelDirs)
                 {
@@ -162,21 +162,21 @@ namespace ImageComparatorPOC
             return feature;
         }
 
-        private bool IsNameSimilar(string s1, string s2)
+        private bool IsNameSimilar(string swe, string zyte)
         {
-            s1 = s1.Replace("'", "").Replace("\"", " ").Replace("&", " ").Replace("-", " ");
-            var words1 = s1.Split(' ').Where(x => x.Length > 2).ToList();
+            swe = swe.Replace("'", "").Replace("\"", " ").Replace("&", " ").Replace("-", " ");
+            var weWords = swe.Split(' ').Where(x => x.Length > 2).ToList();
 
-            s2 = s2.Replace("'", "").Replace("\"", " ").Replace("&", " ").Replace("-", " ");
-            var words2 = s2.Split(' ').Where(x => x.Length > 2).ToList();
+            zyte = zyte.Replace("'", "").Replace("\"", " ").Replace("&", " ").Replace("-", " ");
+            var zyteWords = zyte.Split(' ').Where(x => x.Length > 2).ToList();
 
-            if(words1.Count == 0|| words2.Count == 0)
+            if(weWords.Count == 0|| zyteWords.Count == 0)
             {
                 //Console.WriteLine($"'{s1}' '{s2}' fallback");
                 return true;
             }
 
-            return words1.Any(words2.Contains);
+            return weWords.All(zyteWords.Contains);
         }
 
         struct FilesToProcess
