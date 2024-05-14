@@ -153,11 +153,7 @@ namespace ImageComparatorPOC
                 }
             }
 
-            
-            if (feature != null)
-            {
                 _features[filename] = feature;
-            }
 
             return feature;
         }
@@ -165,10 +161,10 @@ namespace ImageComparatorPOC
         private bool IsNameSimilar(string swe, string zyte)
         {
             swe = swe.Replace("'", "").Replace("\"", " ").Replace("&", " ").Replace("-", " ");
-            var weWords = swe.Split(' ').Where(x => x.Length > 2).ToList();
+            var weWords = swe.Split(' ').Where(x => x.Length > 1).ToList();
 
             zyte = zyte.Replace("'", "").Replace("\"", " ").Replace("&", " ").Replace("-", " ");
-            var zyteWords = zyte.Split(' ').Where(x => x.Length > 2).ToList();
+            var zyteWords = zyte.Split(' ').Where(x => x.Length > 1).ToList();
 
             if(weWords.Count == 0|| zyteWords.Count == 0)
             {
