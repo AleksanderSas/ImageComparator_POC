@@ -1,5 +1,4 @@
 ﻿using Emgu.CV;
-using Emgu.CV.Dnn;
 using System.Collections.Concurrent;
 
 namespace ImageComparatorPOC
@@ -9,21 +8,31 @@ namespace ImageComparatorPOC
         private ConcurrentDictionary<string, Feature> _features = new ConcurrentDictionary<string, Feature>();
 
         private const string ZyteFeatureDir = "C:\\Projects\\watches\\Zyte-features\\";
-        private const string ResutsDir = "C:\\Projects\\watches\\comparisionResults\\";
+        private const string ResultsDir = "C:\\Projects\\watches\\comparisionResults-S\\";
+        private const string ResultsDir2 = "C:\\Projects\\watches\\comparisionResults\\SWE_SINGLE\\";
         private const string ZyteDir = "C:\\Projects\\watches\\Zyte-production\\";
-        private const string SweDir = "C:\\Projects\\watches\\SWE-production-A\\";
+        private const string SweDir = "C:\\Projects\\watches\\SWE-production-S\\";
 
-        public async Task RunTestWithCache(string brand)
+        public async Task ScanSwe(string image1, string image2, string brand, string model, bool useGeometryFeature)
+        {
+            var dir = $"{SweDir}{brand}\\{model}";
+            var models = new DirectoryInfo(dir).GetFiles();
+            List<Feature> descriptors = await GetFeature(models.Select(x => x.FullName).ToList(), false, useGeometryFeature);
+            await ScanSwe2(image1, brand, model, descriptors);
+            await ScanSwe2(image2, brand, model, descriptors);
+        }
+
+        public async Task RunTestWithCache(string brand, bool useGeometryFeature)
         {
             var dir = $"{SweDir}{brand}";
             var models = new DirectoryInfo(dir).GetDirectories();
             foreach (var model in models)
             {
-                await RunTestWithCache(brand, model.Name);
+                await RunTestWithCache(brand, model.Name, useGeometryFeature);
             }
         }
 
-        public async Task RunTestWithCache(string brand, string model)
+        public async Task RunTestWithCache(string brand, string model, bool useGeometryFeature)
         {
             var dir = $"{SweDir}{brand}\\{model}";
             var files = new DirectoryInfo(dir).GetFiles();
@@ -32,7 +41,7 @@ namespace ImageComparatorPOC
                 try
                 {
                     Console.WriteLine(file.Name);
-                    await RunTestWithCache(file.Name, brand, model);
+                    await RunTestWithCache(file.Name, brand, model, useGeometryFeature);
                 }
                 catch (Exception ex) 
                 {
@@ -41,11 +50,42 @@ namespace ImageComparatorPOC
             }
         }
 
-        public async Task RunTestWithCache(string filename, string brand, string model)
+        public async Task ScanSwe2(string filename, string brand, string model, List<Feature> descriptors)
         {
-            var resultDir = $"{ResutsDir}{brand}\\{model}";
+            var resultDir = $"{ResultsDir2}{brand}\\{model}";
+
+            var idx = Math.Max(filename.LastIndexOf('/'), filename.LastIndexOf('\\'));
+            var name = filename.Substring(idx + 1); 
+            var watch = Feature.GetFature(CvInvoke.Imread(filename), name);
+            var resultPath = $"{resultDir}\\{name}.txt";
+
+            //For test purpose
+            //filesNames.Files = filesNames.Files.Skip(400).ToList();
+            var results = await Tester.TestAsync(descriptors, watch, true);
+
+            if (!Directory.Exists(resultDir))
+            {
+                Directory.CreateDirectory(resultDir);
+            }
+            using (StreamWriter outputFile = new StreamWriter(resultPath))
+            {
+                outputFile.WriteLine($"File: {filename}");
+                outputFile.WriteLine($"Scan_no: {descriptors.Count}");
+                outputFile.WriteLine($"Brands: {brand}");
+                outputFile.WriteLine($"Models: {model}");
+                foreach (var r in results.Where(x => x.Score < 0.0))// && x.Score > -180.0))
+                {
+                    outputFile.WriteLine($"{r.Image};{r.Score};{r.ScorePerPoint}");
+                }
+
+            }
+        }
+
+        public async Task RunTestWithCache(string filename, string brand, string model, bool useGeometryFeature)
+        {
+            var resultDir = $"{ResultsDir}{brand}\\{model}";
             var resultPath = $"{resultDir}\\{filename}.txt";
-            if(File.Exists(resultPath))
+            if (File.Exists(resultPath))
             {
                 Console.WriteLine("Results already exists");
                 return;
@@ -57,24 +97,32 @@ namespace ImageComparatorPOC
             var filesNames = GetFilesToCompare(brand, model);
             //For test purpose
             //filesNames.Files = filesNames.Files.Skip(400).ToList();
-            var descriptors = await GetFeature(filesNames.Files);
-            var results = await Tester.TestAsync(descriptors, watch);
+            await RunTestWithCache(useGeometryFeature, resultDir, resultPath, watchFile, watch, filesNames);
+        }
 
-            if(!Directory.Exists(resultDir))
+        public async Task RunTestWithCache(bool useGeometryFeature, string resultDir, string resultPath, string watchFile, Feature watch, FilesToProcess filesNames)
+        {
+            var descriptors = await GetFeature(filesNames.Files, true, useGeometryFeature);
+            var results = await Tester.TestAsync(descriptors, watch, useGeometryFeature);
+
+            if (!Directory.Exists(resultDir))
             {
                 Directory.CreateDirectory(resultDir);
             }
             using (StreamWriter outputFile = new StreamWriter(resultPath))
             {
+                var version = useGeometryFeature ? 1 : 0;
+                outputFile.WriteLine($"Version: {useGeometryFeature}");
                 outputFile.WriteLine($"File: {watchFile}");
                 outputFile.WriteLine($"Scan_no: {descriptors.Count}");
                 outputFile.WriteLine($"Brands: {string.Join(";", filesNames.Brands)}");
                 outputFile.WriteLine($"Models: {string.Join(";", filesNames.Models)}");
-                foreach (var r in results.Where(x => x.Score < 0.0 && x.Score > -150.0))
+                var scoreLimit = useGeometryFeature ? -250.0 : -180.0;
+                foreach (var r in results.Where(x => x.Score < 0.0 && x.Score > scoreLimit))
                 {
                     outputFile.WriteLine($"{r.Image};{r.Score};{r.ScorePerPoint}");
                 }
-   
+
             }
         }
 
@@ -99,12 +147,12 @@ namespace ImageComparatorPOC
             return result;
         }
 
-        private async Task<List<Feature>> GetFeature(List<string> filenames)
+        private async Task<List<Feature>> GetFeature(List<string> filenames, bool saveFeatures, bool useGeometryFeature)
         {
             var readImageContext = new ParallelContext { TotalCount = filenames.Count };
-            var batches = filenames.ToList().Batches(filenames.Count / 10);
+            var batches = filenames.ToList().Batches(filenames.Count / 6);
             //var batches = filenames.ToList().Batches(filenames.Count);
-            var taskResults = await Task.WhenAll(batches.Select(x => GetFeatureAsync(x, readImageContext)).ToList());
+            var taskResults = await Task.WhenAll(batches.Select(x => GetFeatureAsync(x, readImageContext, saveFeatures, useGeometryFeature)).ToList());
             Console.WriteLine();
 
             List<Feature> descriptors = taskResults
@@ -116,7 +164,7 @@ namespace ImageComparatorPOC
             return descriptors;
         }
 
-        Task<List<Feature?>> GetFeatureAsync(IList<string> files, ParallelContext context)
+        Task<List<Feature?>> GetFeatureAsync(IList<string> files, ParallelContext context, bool saveFeatures, bool useGeometryFeature)
         {
             return Task.Run(() => files.Select(y =>
             {
@@ -124,12 +172,17 @@ namespace ImageComparatorPOC
                 {
                     if (!_features.TryGetValue(y, out var feature))
                     {
-                        feature = ReadFeature(y);
+                        feature = ReadFeature(y, saveFeatures, useGeometryFeature);
                     }
 
-                    lock (context)
+                    var c = Interlocked.Increment(ref context.FinishedCount);
+                    if(c % 8 == 0)
                     {
-                        Console.Write($"\rRead images {++context.FinishedCount}\\{context.TotalCount}");
+                        lock (context)
+                        {
+                            Console.Write($"\rRead images {c}\\{context.TotalCount} MPI: {context.MilisPerImage()}");
+
+                        }
                     }
                     return feature;
                 }
@@ -140,14 +193,14 @@ namespace ImageComparatorPOC
             }).ToList());
         }
 
-        private Feature ReadFeature(string filename)
+        private Feature ReadFeature(string filename, bool saveFeatures, bool useGeometryFeature)
         {
             var cachFile = filename.Replace(ZyteDir, ZyteFeatureDir) + ".PFM";
-            var feature = Feature.Load(cachFile, filename);
+            var feature = Feature.Load(cachFile, filename, useGeometryFeature);
             if(feature == null)
             {
                 feature = Feature.GetFature(CvInvoke.Imread(filename), filename);
-                if (feature != null)
+                if (saveFeatures && feature != null)
                 {
                     feature.Save(cachFile);
                 }
@@ -175,7 +228,7 @@ namespace ImageComparatorPOC
             return weWords.All(zyteWords.Contains);
         }
 
-        struct FilesToProcess
+        public struct FilesToProcess
         {
             public List<string> Files;
             public List<string> Brands;
