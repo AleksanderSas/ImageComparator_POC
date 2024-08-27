@@ -44,14 +44,14 @@ Test(descriptors, descriptors[6]);
     public static async Task<List<ComparisionResult>> TestAsync(List<Feature> descriptors, Feature testedImage, bool useGeometryFeature)
     {
         List<ComparisionResult> results = null;
-        if (descriptors.Count > 5000)
+        var toTakeLimit = Math.Max(40, (descriptors.Count / 1000) * 3);
+        if (descriptors.Count > 3000)
         {
             results = await TestInternalAsync(descriptors, testedImage, 30, 25, false);
-            descriptors = results.Take(2000).Select(x => x.OtherFeature).ToList();
+            descriptors = results.Take(1500).Select(x => x.OtherFeature).ToList();
         }
 
         results = await TestInternalAsync(descriptors, testedImage, 60, 50, false);
-        var toTakeLimit = Math.Max(40, (results.Count / 1000) * 4);
         results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -1.15).Take(toTakeLimit).ToList();
         //var results = await TestInternalAsync(descriptors, testedImage, 100, 80);
         //results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -3.10).Take(60).ToList();

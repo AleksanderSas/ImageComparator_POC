@@ -48,15 +48,15 @@ public class PostProcessor
             }
             var jpgName = x.Name.Substring(0, x.Name.Length - 4);
             var sweImageUrl = $"{SweDir}/{brand.Name}/{model.Name}/{jpgName}";
-            var sweImage = Feature.GetFature(CvInvoke.Imread(sweImageUrl), jpgName);
             var resultFile = $"{ResultDirectory}/{brand.Name}/{model.Name}/{x.Name}";
             var resultFileDir = $"{ResultDirectory}/{brand.Name}/{model.Name}";
 
-            if (File.Exists(resultFile))
+            if (File.Exists(resultFile) && report.Version2)
             {
                 Console.WriteLine($"{jpgName} already processed");
                 return;
             }
+            var sweImage = Feature.GetFature(CvInvoke.Imread(sweImageUrl), jpgName);
 
             if(report.Entries == null)
             {
@@ -78,16 +78,17 @@ public class PostProcessor
             var lines = await File.ReadAllLinesAsync(reportFile);
             var report = new Report
             {
-                Comparisions = Int32.Parse(lines[1].Split(" ")[1]),
+                Version2 = bool.Parse(lines[0].Substring(9)),
+                Comparisions = Int32.Parse(lines[2].Split(" ")[1]),
                 Found = false,
                 Brand = brand,
                 Model = model,
                 Image = watch
             };
 
-            if (lines.Length > 4)
+            if (lines.Length > 5)
             {
-                report.Entries = lines.Skip(4).Select(x =>
+                report.Entries = lines.Skip(5).Select(x =>
                 {
                     return BuildEntry(brand, model, watch, x);
                 }).ToList();
@@ -125,6 +126,7 @@ public class PostProcessor
 
     public class Report
     {
+        public bool Version2;
         public string Model;
         public string Brand;
         public string Image;
