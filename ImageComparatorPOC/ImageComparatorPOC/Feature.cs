@@ -8,6 +8,7 @@ class Feature
 {
     public required Mat Descriptor;
     public required string Name;
+    public Mat ResisedImage;
 
     public static Feature GetFature(Mat imgIn, string name, float threshold = 0.001f)
     {
@@ -50,7 +51,8 @@ class Feature
             return new Feature
             {
                 Descriptor = trimmedMat,
-                Name = name
+                Name = name,
+                ResisedImage = img
             };
         }
         catch (Exception ex)
@@ -138,33 +140,10 @@ class Feature
             double finalScore = 0.0;
             double angleScore = 0.0;
             double distScore = 0.0;
-            List<(double score, int matchIdx, int originIdx)> scores = new List<(double, int, int)>();
-
-            //try N most responsive points
-            for (int i = 0; i < comparePoints; i++)
-            {
-                int bestIdx = 0;
-                double sumMin = 100000;
-                var row1 = Descriptor.Row(i);
-                var row1Len = VecLen(row1, 64);
-
-                //find most similar point
-                for (int k = 0; k < comparePoints; k++)
-                {
-                    var row2 = x.Descriptor.Row(k);
-                    double sum = VecLen(row1 - row2, 64) / (row1Len + VecLen(row2, 64));
-                    if (sumMin > sum)
-                    {
-                        sumMin = sum;
-                        bestIdx = k;
-                    }
-                }
-                scores.Add((sumMin, bestIdx, i));
-            }
+            List<(double score, int matchIdx, int originIdx)> scores = GetPointMapping(x, comparePoints);
 
             int[] hits = new int[comparePoints];
             //take into account only well matching scores, skip K worst matches
-            scores.Sort((x, y) => x.score.CompareTo(y.score));
 
             Geometry originCentroid = null;
             Geometry MatchedCentroid = null;
@@ -210,6 +189,35 @@ class Feature
             //Console.Error.WriteLine($"Error for {Name}:  {e}");
             return (0.0, 0.0, 0.0);
         }
+    }
+
+    public List<(double score, int matchIdx, int originIdx)> GetPointMapping(Feature x, int comparePoints)
+    {
+        List<(double score, int matchIdx, int originIdx)> scores = new List<(double, int, int)>();
+
+        //try N most responsive points
+        for (int i = 0; i < comparePoints; i++)
+        {
+            int bestIdx = 0;
+            double sumMin = 100000;
+            var row1 = Descriptor.Row(i);
+            var row1Len = VecLen(row1, 64);
+
+            //find most similar point
+            for (int k = 0; k < comparePoints; k++)
+            {
+                var row2 = x.Descriptor.Row(k);
+                double sum = VecLen(row1 - row2, 64) / (row1Len + VecLen(row2, 64));
+                if (sumMin > sum)
+                {
+                    sumMin = sum;
+                    bestIdx = k;
+                }
+            }
+            scores.Add((sumMin, bestIdx, i));
+        }
+        scores.Sort((x, y) => x.score.CompareTo(y.score));
+        return scores;
     }
 
     private static double GetAngleScore(double avgAngle, double a1, double a2)
@@ -308,6 +316,25 @@ class Feature
             }
             d++;
             d++;
+        }
+    }
+
+    public unsafe void CopyInto(Mat mat, int xShift)
+    {
+        var cols = ResisedImage.Cols;
+        for (int y = 0; y < ResisedImage.Rows; y++)
+        {
+            var source = ResisedImage.Row(y);
+            var destination = mat.Row(y);
+
+            var sp = (byte*)source.DataPointer.ToPointer();
+            var dp = (byte*)destination.DataPointer.ToPointer() + xShift * 3;
+            for (int k = 0; k < cols * 3; k++)
+            {
+                *dp = *sp;
+                dp++;
+                sp++;
+            }
         }
     }
 }

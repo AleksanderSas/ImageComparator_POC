@@ -41,7 +41,7 @@ Test(descriptors, descriptors[6]);
         Console.WriteLine();
     }
 
-    public static async Task<List<ComparisionResult>> TestAsync(List<Feature> descriptors, Feature testedImage, bool useGeometryFeature)
+    public static async Task<List<ComparisionResult>> TestAsync(List<Feature> descriptors, Feature testedImage, bool useGeometryFeature, int pointsLimit = 200)
     {
         List<ComparisionResult> results = null;
         var toTakeLimit = Math.Max(40, (descriptors.Count / 1000) * 3);
@@ -55,10 +55,11 @@ Test(descriptors, descriptors[6]);
         results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -1.15).Take(toTakeLimit).ToList();
         //var results = await TestInternalAsync(descriptors, testedImage, 100, 80);
         //results = results.Where(x => x.Score < 0.0 && x.ScorePerPoint > -3.10).Take(60).ToList();
-        return await TestInternalAsync(results.Select(x => x.OtherFeature).ToList(), testedImage, 300, 200, useGeometryFeature);
+
+        return await TestInternalAsync(results.Select(x => x.OtherFeature).ToList(), testedImage, 300, pointsLimit, useGeometryFeature);
     }
 
-    private static async Task<List<ComparisionResult>> TestInternalAsync(List<Feature> descriptors, Feature testedImage, int comparePoints, int bestPoints, bool useGeometryFeature)
+    public static async Task<List<ComparisionResult>> TestInternalAsync(List<Feature> descriptors, Feature testedImage, int comparePoints, int bestPoints, bool useGeometryFeature)
     {
         if(descriptors.Count == 0)
         {
